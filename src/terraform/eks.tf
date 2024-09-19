@@ -25,7 +25,15 @@ data "aws_subnet" "selected" {
 data "aws_security_group" "eks-sg" {
   id = aws_eks_cluster.eks-techchallenge.vpc_config[0].cluster_security_group_id
 }
+
+data "aws_eks_cluster" "existing" {
+  name = "eks-techchallenge"
+}
+
 resource "aws_eks_cluster" "eks-techchallenge" {
+
+	count = length(data.aws_eks_cluster.existing.id) == 0 ? 1 : 0
+
   kubernetes_network_config {
     ip_family         = "ipv4"
     service_ipv4_cidr = var.serviceIpv4
