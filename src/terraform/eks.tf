@@ -1,3 +1,11 @@
+locals {
+  eks_clusters = {
+    eks-techchallenge = {
+      name = "eks-techchallenge"
+    }
+  }
+}
+
 data "aws_iam_role" "name" {
   name = "LabRole"
 }
@@ -22,17 +30,12 @@ data "aws_subnet" "selected" {
   id = each.value
 }
 
-data "aws_security_group" "eks-sg" {
-  id = aws_eks_cluster.eks-techchallenge[each.key].vpc_config[0].cluster_security_group_id
-}
-
 data "aws_eks_cluster" "existing" {
   name = "eks-techchallenge"
 }
 
 resource "aws_eks_cluster" "eks-techchallenge" {
-
-  for_each = length(data.aws_eks_cluster.existing.id) == 0 ? { for k, v in local.eks_clusters : k => v } : {}
+  for_each = length(data.aws_eks_cluster.existing.id) == 0 ? local.eks_clusters : {}
 
   kubernetes_network_config {
     ip_family         = "ipv4"
@@ -49,6 +52,20 @@ resource "aws_eks_cluster" "eks-techchallenge" {
     public_access_cidrs     = ["0.0.0.0/0"]
     subnet_ids              = [for subnet in data.aws_subnet.selected : subnet.id if subnet.availability_zone != "us-east-1e"]
   }
+}
+
+data "aws_security_group" "eks-sg" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
+  id = each.value.vpc_config[0].cluster_security_group_id
+}
+
+resource "aws_security_group" "eks-sg" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
+  name        = "eks-default-sg"
+  description = "Default security group for the EKS cluster"
+  vpc_id      = each.value.vpc_config[0].vpc_id
 }
 
 resource "aws_eks_node_group" "techchallenge-node" {
@@ -85,15 +102,6 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
   resolve_conflicts_on_update = "NONE"
 
   depends_on = [aws_eks_node_group.techchallenge-node]
-}
-
-
-resource "aws_security_group" "eks-sg" {
-  for_each = aws_eks_cluster.eks-techchallenge
-  
-  name        = "eks-default-sg"
-  description = "Default security group for the EKS cluster"
-  vpc_id      = each.value.vpc_config[0].vpc_id
 }
 
 resource "aws_eks_addon" "vpc_cni" {
