@@ -23,7 +23,7 @@ data "aws_subnet" "selected" {
 }
 
 data "aws_security_group" "eks-sg" {
-  id = aws_eks_cluster.eks-techchallenge[count.index].vpc_config[0].cluster_security_group_id
+  id = aws_eks_cluster.eks-techchallenge[each.key].vpc_config[0].cluster_security_group_id
 }
 
 data "aws_eks_cluster" "existing" {
@@ -32,14 +32,14 @@ data "aws_eks_cluster" "existing" {
 
 resource "aws_eks_cluster" "eks-techchallenge" {
 
-	count = length(data.aws_eks_cluster.existing.id) == 0 ? 1 : 0
+  for_each = length(data.aws_eks_cluster.existing.id) == 0 ? { for k, v in local.eks_clusters : k => v } : {}
 
   kubernetes_network_config {
     ip_family         = "ipv4"
     service_ipv4_cidr = var.serviceIpv4
   }
 
-  name     = var.eksName
+  name     = each.value.name
   role_arn = data.aws_iam_role.name.arn
   version  = var.eksVersion
 
@@ -52,9 +52,11 @@ resource "aws_eks_cluster" "eks-techchallenge" {
 }
 
 resource "aws_eks_node_group" "techchallenge-node" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
   ami_type      = var.nodeAmiType
   capacity_type = var.nodeCapacityType
-  cluster_name  = aws_eks_cluster.eks-techchallenge[count.index].name
+  cluster_name  = each.value.name
   disk_size     = var.nodeDiskSize
 
   instance_types = [
@@ -87,9 +89,11 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
 
 
 resource "aws_security_group" "eks-sg" {
+  for_each = aws_eks_cluster.eks-techchallenge
+  
   name        = "eks-default-sg"
   description = "Default security group for the EKS cluster"
-  vpc_id      = aws_eks_cluster.eks-techchallenge[count.index].vpc_config[0].vpc_id
+  vpc_id      = each.value.vpc_config[0].vpc_id
 }
 
 resource "aws_eks_addon" "vpc_cni" {
