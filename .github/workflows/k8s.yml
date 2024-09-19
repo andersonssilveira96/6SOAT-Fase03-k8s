@@ -1,8 +1,8 @@
 name: Deploy to EKS
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+  repository_dispatch:
+    types: [deployment]
 jobs:
   deploy:
     name: Deploy to EKS
