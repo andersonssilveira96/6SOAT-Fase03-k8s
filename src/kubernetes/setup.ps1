@@ -4,9 +4,9 @@ minikube start
 kubectl apply -f metrics-server.yaml
 
 # API
-kubectl apply -f api-secret.yaml
-kubectl apply -f api-deployment.yaml
-kubectl apply -f api-svc.yaml
-kubectl apply -f api-hpa.yaml
+kubectl apply -f ./src/kubernetes/api-secret.yaml
+kubectl apply -f ./src/kubernetes/api-deployment.yaml
+kubectl apply -f ./src/kubernetes/api-svc.yaml
+kubectl apply -f ./src/kubernetes/api-hpa.yaml
 
 pause
