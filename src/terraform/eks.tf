@@ -1,18 +1,154 @@
-╷
-│ Error: creating EKS Add-On (eks-techchallenge:aws-ebs-csi-driver): operation error EKS: CreateAddon, https response error StatusCode: 409, RequestID: dcabcf0e-886e-4824-9019-bfeeb2182bda, ResourceInUseException: Addon already exists.
-│ 
-│   with aws_eks_addon.aws_ebs_csi_driver,
-│   on eks.tf line 97, in resource "aws_eks_addon" "aws_ebs_csi_driver":
-│   97: resource "aws_eks_addon" "aws_ebs_csi_driver" {
-│ 
-╵
-╷
-│ Error: creating EKS Add-On (eks-techchallenge:vpc-cni): operation error EKS: CreateAddon, https response error StatusCode: 409, RequestID: f1c3128d-cb13-4cb5-b3e0-0f6c7357a4c5, ResourceInUseException: Addon already exists.
-│ 
-│   with aws_eks_addon.vpc_cni,
-│   on eks.tf line 107, in resource "aws_eks_addon" "vpc_cni":
-│  107: resource "aws_eks_addon" "vpc_cni" {
-│ 
-╵
-Error: Terraform exited with code 1.
-Error: Process completed with exit code 1.
+locals {
+  eks_clusters = {
+    eks-techchallenge = {
+      name = "eks-techchallenge"
+    }
+  }
+}
+
+data "aws_iam_role" "name" {
+  name = "LabRole"
+}
+
+data "aws_vpcs" "selected" {
+  filter {
+    name   = "isDefault"
+    values = ["true"]
+  }
+}
+
+data "aws_subnets" "selected" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpcs.selected.ids[0]]
+  }
+}
+
+data "aws_subnet" "selected" {
+  for_each = toset(data.aws_subnets.selected.ids)
+
+  id = each.value
+}
+
+data "aws_eks_cluster" "existing" {
+  name = "eks-techchallenge"
+}
+
+resource "aws_eks_cluster" "eks-techchallenge" {
+  for_each = length(data.aws_eks_cluster.existing.id) == 0 ? local.eks_clusters : {}
+
+  kubernetes_network_config {
+    ip_family         = "ipv4"
+    service_ipv4_cidr = var.serviceIpv4
+  }
+
+  name     = each.value.name
+  role_arn = data.aws_iam_role.name.arn
+  version  = var.eksVersion
+
+  vpc_config {
+    endpoint_private_access = "true"
+    endpoint_public_access  = "true"
+    public_access_cidrs     = ["0.0.0.0/0"]
+    subnet_ids              = [for subnet in data.aws_subnet.selected : subnet.id if subnet.availability_zone != "us-east-1e"]
+  }
+}
+
+data "aws_security_group" "eks-sg" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
+  id = each.value.vpc_config[0].cluster_security_group_id
+}
+
+resource "aws_security_group" "eks-sg" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
+  name        = "eks-default-sg"
+  description = "Default security group for the EKS cluster"
+  vpc_id      = each.value.vpc_config[0].vpc_id
+}
+
+resource "aws_eks_node_group" "techchallenge-node" {
+  for_each = aws_eks_cluster.eks-techchallenge
+
+  ami_type      = var.nodeAmiType
+  capacity_type = var.nodeCapacityType
+  cluster_name  = each.value.name
+  disk_size     = var.nodeDiskSize
+
+  instance_types = [
+    var.nodeInstanceType
+  ]
+
+  node_group_name = "techchallenge-node"
+  node_role_arn   = data.aws_iam_role.name.arn
+  subnet_ids      = [for subnet in data.aws_subnet.selected : subnet.id if subnet.availability_zone != "us-east-1e"]
+  version         = var.eksVersion
+
+  scaling_config {
+    desired_size = 1
+    min_size     = 1
+    max_size     = 2
+  }
+
+  depends_on = [aws_eks_cluster.eks-techchallenge]
+}
+
+data "aws_eks_addon" "existing_addons" {
+  for_each = toset(["aws-ebs-csi-driver", "vpc-cni", "kube-proxy", "coredns"])
+
+  cluster_name = var.eksName
+  addon_name   = each.key
+}
+
+resource "aws_eks_addon" "aws_ebs_csi_driver" {
+  count = length(data.aws_eks_addon.existing_addons["aws-ebs-csi-driver"].id) == 0 ? 1 : 0
+
+  cluster_name                = var.eksName
+  addon_name                  = "aws-ebs-csi-driver"
+  addon_version               = var.ebsAddonVersion
+  resolve_conflicts_on_create = "NONE"
+  resolve_conflicts_on_update = "NONE"
+
+  depends_on = [aws_eks_node_group.techchallenge-node]
+}
+
+resource "aws_eks_addon" "vpc_cni" {
+  count = length(data.aws_eks_addon.existing_addons["vpc-cni"].id) == 0 ? 1 : 0
+
+  cluster_name                = var.eksName
+  addon_name                  = "vpc-cni"
+  addon_version               = "v1.16.0-eksbuild.1"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_eks_node_group.techchallenge-node]
+}
+
+resource "aws_eks_addon" "kube_proxy" {
+  count = length(data.aws_eks_addon.existing_addons["kube-proxy"].id) == 0 ? 1 : 0
+
+  cluster_name                = var.eksName
+  addon_name                  = "kube-proxy"
+  addon_version               = "v1.29.0-eksbuild.1"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_eks_addon.vpc_cni
+  ]
+}
+
+resource "aws_eks_addon" "core_dns" {
+  count = length(data.aws_eks_addon.existing_addons["coredns"].id) == 0 ? 1 : 0
+
+  cluster_name                = var.eksName
+  addon_name                  = "coredns"
+  addon_version               = "v1.11.1-eksbuild.4"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [
+    aws_eks_addon.vpc_cni
+  ]
+}
