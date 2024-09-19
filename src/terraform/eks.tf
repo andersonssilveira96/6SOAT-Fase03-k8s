@@ -94,9 +94,18 @@ resource "aws_eks_node_group" "techchallenge-node" {
   depends_on = [aws_eks_cluster.eks-techchallenge]
 }
 
+data "aws_eks_addon" "existing_addons" {
+  for_each = toset(["aws-ebs-csi-driver", "vpc-cni", "kube-proxy", "coredns"])
+
+  cluster_name = var.eksName
+  addon_name   = each.key
+}
+
 resource "aws_eks_addon" "aws_ebs_csi_driver" {
+  count = length(data.aws_eks_addon.existing_addons["aws-ebs-csi-driver"].id) == 0 ? 1 : 0
+
   cluster_name                = var.eksName
-  addon_name                  = var.ebsAddonName
+  addon_name                  = "aws-ebs-csi-driver"
   addon_version               = var.ebsAddonVersion
   resolve_conflicts_on_create = "NONE"
   resolve_conflicts_on_update = "NONE"
@@ -105,6 +114,8 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
 }
 
 resource "aws_eks_addon" "vpc_cni" {
+  count = length(data.aws_eks_addon.existing_addons["vpc-cni"].id) == 0 ? 1 : 0
+
   cluster_name                = var.eksName
   addon_name                  = "vpc-cni"
   addon_version               = "v1.16.0-eksbuild.1"
@@ -115,6 +126,8 @@ resource "aws_eks_addon" "vpc_cni" {
 }
 
 resource "aws_eks_addon" "kube_proxy" {
+  count = length(data.aws_eks_addon.existing_addons["kube-proxy"].id) == 0 ? 1 : 0
+
   cluster_name                = var.eksName
   addon_name                  = "kube-proxy"
   addon_version               = "v1.29.0-eksbuild.1"
@@ -127,6 +140,8 @@ resource "aws_eks_addon" "kube_proxy" {
 }
 
 resource "aws_eks_addon" "core_dns" {
+  count = length(data.aws_eks_addon.existing_addons["coredns"].id) == 0 ? 1 : 0
+
   cluster_name                = var.eksName
   addon_name                  = "coredns"
   addon_version               = "v1.11.1-eksbuild.4"
