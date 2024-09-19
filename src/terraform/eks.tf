@@ -23,7 +23,7 @@ data "aws_subnet" "selected" {
 }
 
 data "aws_security_group" "eks-sg" {
-  id = aws_eks_cluster.eks-techchallenge.vpc_config[0].cluster_security_group_id
+  id = aws_eks_cluster.eks-techchallenge[count.index].vpc_config[0].cluster_security_group_id
 }
 
 data "aws_eks_cluster" "existing" {
@@ -54,7 +54,7 @@ resource "aws_eks_cluster" "eks-techchallenge" {
 resource "aws_eks_node_group" "techchallenge-node" {
   ami_type      = var.nodeAmiType
   capacity_type = var.nodeCapacityType
-  cluster_name  = var.eksName
+  cluster_name  = aws_eks_cluster.eks-techchallenge[count.index].name
   disk_size     = var.nodeDiskSize
 
   instance_types = [
@@ -89,7 +89,7 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
 resource "aws_security_group" "eks-sg" {
   name        = "eks-default-sg"
   description = "Default security group for the EKS cluster"
-  vpc_id      = aws_eks_cluster.eks-techchallenge.vpc_config[0].vpc_id
+  vpc_id      = aws_eks_cluster.eks-techchallenge[count.index].vpc_config[0].vpc_id
 }
 
 resource "aws_eks_addon" "vpc_cni" {
