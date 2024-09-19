@@ -8,5 +8,3 @@ kubectl apply -f ./src/kubernetes/api-secret.yaml
 kubectl apply -f ./src/kubernetes/api-deployment.yaml
 kubectl apply -f ./src/kubernetes/api-svc.yaml
 kubectl apply -f ./src/kubernetes/api-hpa.yaml
-
-pause
