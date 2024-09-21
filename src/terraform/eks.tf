@@ -1,11 +1,3 @@
-locals {
-  eks_clusters = {
-    eks-techchallenge = {
-      name = "eks-techchallenge"
-    }
-  }
-}
-
 data "aws_iam_role" "name" {
   name = "LabRole"
 }
@@ -30,19 +22,18 @@ data "aws_subnet" "selected" {
   id = each.value
 }
 
-data "aws_eks_cluster" "existing" {
-  name = "eks-techchallenge"
+data "aws_security_group" "eks-sg" {
+  id = aws_eks_cluster.eks-techchallenge.vpc_config[0].cluster_security_group_id
 }
 
 resource "aws_eks_cluster" "eks-techchallenge" {
-  for_each = length(data.aws_eks_cluster.existing.id) == 0 ? local.eks_clusters : {}
 
   kubernetes_network_config {
     ip_family         = "ipv4"
     service_ipv4_cidr = var.serviceIpv4
   }
 
-  name     = each.value.name
+  name     = var.eksName
   role_arn = data.aws_iam_role.name.arn
   version  = var.eksVersion
 
@@ -54,26 +45,10 @@ resource "aws_eks_cluster" "eks-techchallenge" {
   }
 }
 
-data "aws_security_group" "eks-sg" {
-  for_each = aws_eks_cluster.eks-techchallenge
-
-  id = each.value.vpc_config[0].cluster_security_group_id
-}
-
-resource "aws_security_group" "eks-sg" {
-  for_each = aws_eks_cluster.eks-techchallenge
-
-  name        = "eks-default-sg"
-  description = "Default security group for the EKS cluster"
-  vpc_id      = each.value.vpc_config[0].vpc_id
-}
-
 resource "aws_eks_node_group" "techchallenge-node" {
-  for_each = aws_eks_cluster.eks-techchallenge
-
   ami_type      = var.nodeAmiType
   capacity_type = var.nodeCapacityType
-  cluster_name  = each.value.name
+  cluster_name  = var.eksName
   disk_size     = var.nodeDiskSize
 
   instance_types = [
@@ -94,18 +69,9 @@ resource "aws_eks_node_group" "techchallenge-node" {
   depends_on = [aws_eks_cluster.eks-techchallenge]
 }
 
-data "aws_eks_addon" "existing_addons" {
-  for_each = toset(["aws-ebs-csi-driver", "vpc-cni", "kube-proxy", "coredns"])
-
-  cluster_name = var.eksName
-  addon_name   = each.key
-}
-
 resource "aws_eks_addon" "aws_ebs_csi_driver" {
-  count = length(data.aws_eks_addon.existing_addons["aws-ebs-csi-driver"].id) == 0 ? 1 : 0
-
   cluster_name                = var.eksName
-  addon_name                  = "aws-ebs-csi-driver"
+  addon_name                  = var.ebsAddonName
   addon_version               = var.ebsAddonVersion
   resolve_conflicts_on_create = "NONE"
   resolve_conflicts_on_update = "NONE"
@@ -113,9 +79,14 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
   depends_on = [aws_eks_node_group.techchallenge-node]
 }
 
-resource "aws_eks_addon" "vpc_cni" {
-  count = length(data.aws_eks_addon.existing_addons["vpc-cni"].id) == 0 ? 1 : 0
 
+resource "aws_security_group" "eks-sg" {
+  name        = "eks-default-sg"
+  description = "Default security group for the EKS cluster"
+  vpc_id      = aws_eks_cluster.eks-techchallenge.vpc_config[0].vpc_id
+}
+
+resource "aws_eks_addon" "vpc_cni" {
   cluster_name                = var.eksName
   addon_name                  = "vpc-cni"
   addon_version               = "v1.16.0-eksbuild.1"
@@ -126,8 +97,6 @@ resource "aws_eks_addon" "vpc_cni" {
 }
 
 resource "aws_eks_addon" "kube_proxy" {
-  count = length(data.aws_eks_addon.existing_addons["kube-proxy"].id) == 0 ? 1 : 0
-
   cluster_name                = var.eksName
   addon_name                  = "kube-proxy"
   addon_version               = "v1.29.0-eksbuild.1"
@@ -140,8 +109,6 @@ resource "aws_eks_addon" "kube_proxy" {
 }
 
 resource "aws_eks_addon" "core_dns" {
-  count = length(data.aws_eks_addon.existing_addons["coredns"].id) == 0 ? 1 : 0
-
   cluster_name                = var.eksName
   addon_name                  = "coredns"
   addon_version               = "v1.11.1-eksbuild.4"
