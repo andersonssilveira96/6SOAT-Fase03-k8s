@@ -31,5 +31,6 @@ jobs:
           ./src/kubernetes/setup.ps1
           kubectl get deployments
           kubectl logs deployment/api-deployment
+          kubectl logs service/api-svc
         env:
           TF_LOG: DEBUG
