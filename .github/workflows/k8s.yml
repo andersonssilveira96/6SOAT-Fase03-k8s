@@ -29,5 +29,6 @@ jobs:
           aws eks update-kubeconfig --name eks-techchallenge --region us-east-1
           chmod +x ./src/kubernetes/setup.ps1
           ./src/kubernetes/setup.ps1
+          kubectl get deployments
         env:
           TF_LOG: DEBUG
