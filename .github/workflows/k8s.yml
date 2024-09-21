@@ -30,5 +30,6 @@ jobs:
           chmod +x ./src/kubernetes/setup.ps1
           ./src/kubernetes/setup.ps1
           kubectl get deployments
+          kubectl logs deployment/api-deployment
         env:
           TF_LOG: DEBUG
