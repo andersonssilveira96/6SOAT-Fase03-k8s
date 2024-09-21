@@ -1,6 +1,4 @@
-minikube start
-
-# Metrics para obter informações e fazer o HPA da API.
+# Metrics para obter informaÃ§Ãµes e fazer o HPA da API.
 kubectl apply -f ./src/kubernetes/metrics-server.yaml
 
 # API
