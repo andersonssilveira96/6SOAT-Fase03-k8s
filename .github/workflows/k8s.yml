@@ -25,6 +25,9 @@ jobs:
 
       - name: Run Setup Script
         run: |
+          export TF_LOG=DEBUG
           aws eks update-kubeconfig --name eks-techchallenge --region us-east-1
           chmod +x ./src/kubernetes/setup.ps1
           ./src/kubernetes/setup.ps1
+        env:
+          TF_LOG: DEBUG
