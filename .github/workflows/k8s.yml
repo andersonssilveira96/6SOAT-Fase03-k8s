@@ -25,8 +25,8 @@ jobs:
 
       - name: Run Setup Script
         run: |
-          export TF_LOG=DEBUG
-          aws eks update-kubeconfig --name eks-techchallenge --region us-east-1
+          export TF_LOG=DEBUG                                                              
+          aws eks update-kubeconfig --name eks-techchallenge --region us-east-1 --role-arn arn:aws:iam::172639675519:role/LabRole
           chmod +x ./src/kubernetes/setup.ps1
           ./src/kubernetes/setup.ps1
           kubectl get deployments
