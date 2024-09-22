@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: api-container
-          image: andssil/techchallenge:20240922155219
+          image: andssil/techchallenge:latest
           ports:
             - containerPort: 8081
           env:  
