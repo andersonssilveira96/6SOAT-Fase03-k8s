@@ -19,14 +19,10 @@ spec:
         - name: api-container
           image: andssil/techchallenge:latest
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
           env:  
             - name: ASPNETCORE_ENVIRONMENT
-              value: Production     
-            - name: ASPNETCORE_HTTP_PORTS
-              value: "8080"    
-            - name: ASPNETCORE_HTTPS_PORTS
-              value: "8081"               
+              value: Production                         
             - name: ConnectionStrings__Database
               valueFrom: 
                secretKeyRef:
