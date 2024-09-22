@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: api-container
-          image: andssil/techchallenge:latest
+          image: andssil/techchallenge:20240922155219
           ports:
             - containerPort: 443
           env:  
