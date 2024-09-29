@@ -12,7 +12,7 @@ data "aws_vpcs" "selected" {
 data "aws_subnets" "selected" {
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpcs.selected.ids[0]]
+    values = [data.aws_vpcs.selected.ids]
   }
 }
 
@@ -41,7 +41,7 @@ resource "aws_eks_cluster" "eks-techchallenge" {
     endpoint_private_access = "true"
     endpoint_public_access  = "true"
     public_access_cidrs     = ["0.0.0.0/0"]
-    subnet_ids              = [for subnet in data.aws_subnet.selected : subnet.id if subnet.availability_zone in ["us-east-1a", "us-east-1b", "us-east-1c"]]
+    subnet_ids              = [for subnet in data.aws_subnet.selected : subnet.id if subnet.availability_zone != "us-east-1e"]
   }
 }
 
