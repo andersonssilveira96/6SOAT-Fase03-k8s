@@ -12,7 +12,7 @@ data "aws_vpcs" "selected" {
 data "aws_subnets" "selected" {
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpcs.selected.ids]
+    values = [data.aws_vpcs.selected.ids[0]]
   }
 }
 
