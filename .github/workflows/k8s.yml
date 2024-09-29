@@ -24,13 +24,8 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
       - name: Run Setup Script
-        run: |
-          export TF_LOG=DEBUG                                                           
+        run: |                                                            
           aws eks update-kubeconfig --name eks-techchallenge --region us-east-1 
           chmod +x ./src/kubernetes/setup.ps1
-          ./src/kubernetes/setup.ps1
-          kubectl get deployments
-          kubectl logs deployment/api-deployment
-          kubectl logs service/api-svc
-        env:
-          TF_LOG: DEBUG
+          ./src/kubernetes/setup.ps1         
+       
